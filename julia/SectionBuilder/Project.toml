@@ -1,6 +1,6 @@
 name = "SectionBuilder"
 uuid = "5d6e3a1c-7b2f-4a8e-9c1d-2e0f1a3b4c5d"
-authors = ["Chu Ding <chu.ding@runtosolve.com>"]
+authors = ["Chu Ding <drewed26@proton.me>"]
 version = "0.1.0"
 
 [compat]
