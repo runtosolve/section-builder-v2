@@ -1,4 +1,5 @@
 use super::Vec2;
+use std::f64::consts::FRAC_PI_2;
 
 /// A vertex emitted by [`round_polyline`]: either a corner anchor on a
 /// straight portion or a point that lies on an arc.
@@ -24,15 +25,18 @@ impl Vertex {
 }
 
 /// Replace each interior vertex of `points` with: (start-of-arc anchor on the
-/// incoming edge, three interior arc points, end-of-arc anchor on the outgoing
-/// edge). Returns a flat list of `Vertex`es ready for densification.
+/// incoming edge, `n_arc - 1` interior arc points, end-of-arc anchor on the
+/// outgoing edge). Returns a flat list of `Vertex`es ready for densification.
 ///
-/// Mirrors `addCorner.m` + `Corner.middleNodes`: the bend angle is the
-/// deflection between consecutive edges (0 = collinear), the trim offset is
-/// `r * tan(bend / 2)`, and the arc is sampled at quarter sweeps.
-pub(super) fn round_polyline(points: &[Vec2], radius: f64) -> Vec<Vertex> {
+/// `n_arc` per corner is `max(ceil(4 * bend / 90°), ceil(arc_length / target_element_size))`,
+/// guaranteeing at least 4 sub-elements per 90° of bend.
+pub(super) fn round_polyline(
+    points: &[Vec2],
+    radius: f64,
+    target_element_size: f64,
+) -> Vec<Vertex> {
     let n = points.len();
-    let mut out = Vec::with_capacity(n + 3 * n);
+    let mut out = Vec::with_capacity(n * 4);
     out.push(Vertex::Straight(points[0]));
 
     for i in 1..n - 1 {
@@ -64,23 +68,26 @@ pub(super) fn round_polyline(points: &[Vec2], radius: f64) -> Vec<Vertex> {
         let arc_end = curr.add(u_out.scale(offset));
 
         // Arc center is perpendicular to the incoming edge at `arc_start`,
-        // toward the inside of the bend. The inside is on the left for a CCW
-        // turn (cross > 0) and on the right for a CW turn (cross < 0).
+        // toward the inside of the bend.
         let perp = if cross >= 0.0 {
-            Vec2::new(-u_in.y, u_in.x) // left normal of u_in
+            Vec2::new(-u_in.y, u_in.x)
         } else {
-            Vec2::new(u_in.y, -u_in.x) // right normal of u_in
+            Vec2::new(u_in.y, -u_in.x)
         };
         let center = arc_start.add(perp.scale(radius));
 
-        // Sweep direction: rotate (arc_start - center) toward (arc_end - center)
-        // by quartered angles. Sign of the sweep matches sign of `bend`.
         let radial = arc_start.sub(center);
-        let sweep = bend; // signed; magnitude is bend_abs
+        let sweep = bend; // signed
+
+        // n_arc: at least 4 sub-elements per 90° of bend, plus respect target size.
+        let n_by_angle = (4.0 * bend_abs / FRAC_PI_2).ceil() as usize;
+        let arc_length = radius * bend_abs;
+        let n_by_size = (arc_length / target_element_size).ceil() as usize;
+        let n_arc = n_by_angle.max(n_by_size).max(1);
 
         out.push(Vertex::Straight(arc_start));
-        for k in 1..=3 {
-            let theta = sweep * (k as f64) / 4.0;
+        for k in 1..n_arc {
+            let theta = sweep * (k as f64) / (n_arc as f64);
             out.push(Vertex::Arc(center.add(radial.rotate(theta))));
         }
         out.push(Vertex::Straight(arc_end));

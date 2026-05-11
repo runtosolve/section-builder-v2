@@ -28,9 +28,9 @@ fn main() {
 
     let radius = 3.0;
     let thickness = 1.5;
-    let elements_per_segment = 4;
+    let target_element_size = 5.0;
 
-    let model = build_finite_strip_model(&points, radius, thickness, elements_per_segment);
+    let model = build_finite_strip_model(&points, radius, thickness, target_element_size);
 
     println!(
         "nodes: {}, elements: {}",

@@ -7,7 +7,8 @@ fn approx(a: f64, b: f64, tol: f64) -> bool {
 #[test]
 fn straight_line_no_corners() {
     let pts = [Vec2::new(0.0, 0.0), Vec2::new(10.0, 0.0)];
-    let m = build_finite_strip_model(&pts, 0.0, 0.1, 5);
+    // target size 2.0 over length 10 → 5 elements, 6 nodes.
+    let m = build_finite_strip_model(&pts, 0.0, 0.1, 2.0);
     assert_eq!(m.nodes.len(), 6);
     assert_eq!(m.elements.len(), 5);
     assert!(approx(m.nodes[3].x, 6.0, 1e-9));
@@ -22,7 +23,8 @@ fn right_angle_rounds_to_arc() {
         Vec2::new(5.0, 0.0),
         Vec2::new(5.0, 5.0),
     ];
-    let m = build_finite_strip_model(&pts, 1.0, 0.1, 1);
+    // Large target size: straight runs still get min 2 elements; arc still gets 4.
+    let m = build_finite_strip_model(&pts, 1.0, 0.1, 10.0);
 
     // All arc points should be at distance r from the arc center (4, 1).
     let center = Vec2::new(4.0, 1.0);
@@ -52,7 +54,7 @@ fn cee_like_section_topology() {
         Vec2::new(b, -h / 2.0 + d),
         Vec2::new(b, -h / 2.0),
     ];
-    let m = build_finite_strip_model(&pts, 0.25, 0.06, 4);
+    let m = build_finite_strip_model(&pts, 0.25, 0.06, 0.5);
 
     assert_eq!(m.elements.len(), m.nodes.len() - 1);
     for w in m.nodes.windows(2) {

@@ -15,7 +15,7 @@ fn main() {
         Vec2::new(b, -h / 2.0),        // bottom lip tip
     ];
 
-    let model = build_finite_strip_model(&points, 0.25, 0.06, 4);
+    let model = build_finite_strip_model(&points, 0.25, 0.06, 0.5);
 
     println!("nodes: {}, elements: {}", model.nodes.len(), model.elements.len());
     for n in model.nodes.iter().take(5) {

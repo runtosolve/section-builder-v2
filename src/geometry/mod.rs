@@ -6,9 +6,11 @@
 //!
 //! 1. Computing the deflection angle at each interior vertex,
 //! 2. Trimming each adjacent edge by `offset = r * tan(bend / 2)`,
-//! 3. Inserting three intermediate points along the resulting circular arc
-//!    (so each rounded corner contributes four sub-elements), and
-//! 4. Subdividing each straight portion into `elements_per_segment` pieces.
+//! 3. Inserting intermediate points along the resulting circular arc
+//!    (at least 4 sub-elements per 90° of bend, and finer if needed to honor
+//!    `target_element_size`), and
+//! 4. Subdividing each straight portion into pieces no longer than
+//!    `target_element_size`, with a minimum of 2 sub-elements per straight run.
 //!
 //! The MATLAB reference in `matlab/` uses an OO chain of `Line`/`Corner`
 //! objects; here the same idea is expressed as plain vector math on `Vec2`,
@@ -34,9 +36,10 @@ use rounding::round_polyline;
 /// * `radius` – corner radius applied uniformly to every interior vertex.
 ///   Use `0.0` for a fully sharp section.
 /// * `thickness` – plate thickness written into every element row.
-/// * `elements_per_segment` – number of sub-elements per straight segment
-///   (between rounded corners). Must be `>= 1`. Arc portions always contribute
-///   four sub-elements (three interior points) when `radius > 0`.
+/// * `target_element_size` – approximate target length of every sub-element.
+///   Must be `> 0`. Straight runs get `max(2, ceil(length / target_element_size))`
+///   pieces; arcs get `max(ceil(4 * bend / 90°), ceil(arc_length / target_element_size))`
+///   pieces — so every 90° of bend always contributes at least 4 sub-elements.
 ///
 /// # Preconditions
 /// * At least two points.
@@ -48,13 +51,16 @@ pub fn build_finite_strip_model(
     points: &[Vec2],
     radius: f64,
     thickness: f64,
-    elements_per_segment: usize,
+    target_element_size: f64,
 ) -> FiniteStripModel {
     assert!(points.len() >= 2, "need at least two points");
-    assert!(elements_per_segment >= 1, "elements_per_segment must be >= 1");
+    assert!(
+        target_element_size > 0.0,
+        "target_element_size must be > 0"
+    );
 
-    let polyline = round_polyline(points, radius);
-    let densified = mesh(&polyline, elements_per_segment);
+    let polyline = round_polyline(points, radius, target_element_size);
+    let densified = mesh(&polyline, target_element_size);
     to_cufsm_model(&densified, thickness)
 }
 
