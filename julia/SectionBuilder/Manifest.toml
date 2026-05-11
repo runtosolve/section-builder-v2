@@ -1,0 +1,10 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.12.6"
+manifest_format = "2.0"
+project_hash = "7aa8aa1a2b8ba175d80ce88345ada79b30e25b02"
+
+[[deps.SectionBuilder]]
+path = "."
+uuid = "5d6e3a1c-7b2f-4a8e-9c1d-2e0f1a3b4c5d"
+version = "0.1.0"

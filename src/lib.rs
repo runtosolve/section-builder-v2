@@ -1,4 +1,5 @@
 pub mod cufsm;
+pub mod ffi;
 pub mod geometry;
 
 pub use cufsm::{ElementRow, FiniteStripModel, NodeRow};
