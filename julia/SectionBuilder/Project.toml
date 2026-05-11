@@ -3,5 +3,9 @@ uuid = "5d6e3a1c-7b2f-4a8e-9c1d-2e0f1a3b4c5d"
 authors = ["Chu Ding <drewed26@proton.me>"]
 version = "0.1.0"
 
+[deps]
+LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
 [compat]
 julia = "1.9"

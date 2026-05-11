@@ -1,14 +1,35 @@
 module SectionBuilder
 
+using Pkg.Artifacts
+using LazyArtifacts
+
 export Vec2, NodeRow, ElementRow, FiniteStripModel, build_finite_strip_model
 
-const LIB = let
-    base = normpath(joinpath(@__DIR__, "..", "..", "..", "target", "release"))
-    name = Sys.iswindows() ? "section_builder_v2.dll" :
-           Sys.isapple()   ? "libsection_builder_v2.dylib" :
-                             "libsection_builder_v2.so"
-    joinpath(base, name)
+const LIBNAME = Sys.iswindows() ? "section_builder_v2.dll" :
+                Sys.isapple()   ? "libsection_builder_v2.dylib" :
+                                  "libsection_builder_v2.so"
+
+# Resolve the native library path.
+#
+# Priority:
+#   1. ENV["SECTION_BUILDER_LIB"] — absolute path override (dev / custom builds).
+#   2. <pkg>/../../target/release/<LIBNAME> — in-tree dev fallback when the
+#      Julia package lives inside a clone of the Rust crate.
+#   3. The "section_builder_v2" artifact declared in Artifacts.toml, downloaded
+#      from the GitHub Release matching the package version on first use.
+function _resolve_lib()
+    env = get(ENV, "SECTION_BUILDER_LIB", "")
+    isempty(env) || return env
+
+    dev = normpath(joinpath(@__DIR__, "..", "..", "..", "target", "release", LIBNAME))
+    isfile(dev) && return dev
+
+    artdir = artifact"section_builder_v2"
+    subdir = Sys.iswindows() ? "bin" : "lib"
+    return joinpath(artdir, subdir, LIBNAME)
 end
+
+const LIB = _resolve_lib()
 
 const Vec2 = NTuple{2, Float64}
 

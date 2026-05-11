@@ -1,0 +1,141 @@
+name: Release Julia binaries
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release for (e.g. v0.1.0). Must already exist."
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - asset: x86_64-linux-gnu
+            target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            cross: false
+            libname: libsection_builder_v2.so
+            libdir: lib
+          - asset: aarch64-linux-gnu
+            target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            cross: true
+            libname: libsection_builder_v2.so
+            libdir: lib
+          - asset: x86_64-macos
+            target: x86_64-apple-darwin
+            runner: macos-13
+            cross: false
+            libname: libsection_builder_v2.dylib
+            libdir: lib
+          - asset: aarch64-macos
+            target: aarch64-apple-darwin
+            runner: macos-14
+            cross: false
+            libname: libsection_builder_v2.dylib
+            libdir: lib
+          - asset: x86_64-windows
+            target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            cross: false
+            libname: section_builder_v2.dll
+            libdir: bin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross (linux aarch64)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build (cargo)
+        if: ${{ !matrix.cross }}
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Build (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Stage artifact (unix)
+        if: runner.os != 'Windows'
+        run: |
+          set -euo pipefail
+          STAGE="stage/${{ matrix.libdir }}"
+          mkdir -p "$STAGE"
+          cp "target/${{ matrix.target }}/release/${{ matrix.libname }}" "$STAGE/"
+          tar -C stage -czf "section_builder_v2-${{ matrix.asset }}.tar.gz" .
+
+      - name: Stage artifact (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $stage = "stage/${{ matrix.libdir }}"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.libname }}" "$stage/"
+          tar -C stage -czf "section_builder_v2-${{ matrix.asset }}.tar.gz" .
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: section_builder_v2-${{ matrix.asset }}.tar.gz
+          fail_on_unmatched_files: true
+
+  artifacts-toml:
+    name: Update Artifacts.toml
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+
+      - name: Instantiate generator project
+        run: julia --project=julia/SectionBuilder/scripts -e 'using Pkg; Pkg.instantiate()'
+
+      - name: Regenerate Artifacts.toml
+        run: |
+          julia --project=julia/SectionBuilder/scripts \
+                julia/SectionBuilder/scripts/generate_artifacts_toml.jl \
+                --tag "${{ github.event.inputs.tag || github.ref_name }}" \
+                --repo "${{ github.repository }}"
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- julia/SectionBuilder/Artifacts.toml; then
+            echo "Artifacts.toml unchanged"
+            exit 0
+          fi
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          git add julia/SectionBuilder/Artifacts.toml
+          git commit -m "Update Artifacts.toml for ${TAG}"
+          git push origin main
