@@ -33,12 +33,6 @@ jobs:
             cross: true
             libname: libsection_builder_v2.so
             libdir: lib
-          - asset: x86_64-macos
-            target: x86_64-apple-darwin
-            runner: macos-13
-            cross: false
-            libname: libsection_builder_v2.dylib
-            libdir: lib
           - asset: aarch64-macos
             target: aarch64-apple-darwin
             runner: macos-14

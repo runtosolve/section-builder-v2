@@ -27,7 +27,6 @@ const ARTIFACT_NAME  = "section_builder_v2"
 const PLATFORMS = [
     ("x86_64-linux-gnu",   Platform("x86_64",  "linux";   libc="glibc")),
     ("aarch64-linux-gnu",  Platform("aarch64", "linux";   libc="glibc")),
-    ("x86_64-macos",       Platform("x86_64",  "macos")),
     ("aarch64-macos",      Platform("aarch64", "macos")),
     ("x86_64-windows",     Platform("x86_64",  "windows")),
 ]
