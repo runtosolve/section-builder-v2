@@ -1,0 +1,8 @@
+# SectionBuilder
+
+## Introduction
+This project is a tool for simplifying createing finite strip models for analysis in CUFSM. 
+It allows converting an ordered array of point coordinates into a CUFSM node and element input.
+
+## Multi-Language Support
+Written in Rust. This project has Julia bindings.
